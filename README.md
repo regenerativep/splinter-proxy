@@ -1,10 +1,8 @@
 # Splinter Proxy
 
-The Splinter proxy is an advanced proxy intended to allow a player to traverse the network of Splinter Minecraft servers seamlessly. We do not use BungeeCord for this task because BungeeCord's abilities are limited and the JVM can be slower than target specific compiled code.
+The Splinter proxy maps and redirects packets across multiple servers to give the appearance to a connected client of a single seamless Minecraft world.
 
-## Splinter Project
-
-Minecraft servers have a problem: they are all single-threaded. Even if a Minecraft server were to be multithreaded, it would still be limited by the single processor that runs it. The project aims to turn a single Minecraft survival world into a distributed network of Minecraft servers, potentially making the player limit in a single world proportional to the amount of hardware.
+The Splinter project aims to solve the problem that a single Minecraft world's performance is limited by the single most powerful computer that can be obtained. This project aims to fix this by splitting a single Minecraft world up into several servers such that this performance limit comes from the amount of hardware you have.
 
 ## Usage
 
@@ -22,10 +20,10 @@ Grab a 1.16.5 server from [Spigot BuildTools](https://www.spigotmc.org/wiki/buil
 
 There are some required settings in server.properties:
 
-- `server-port=25400` Server port can be changed within the config file of the proxy.
-- `online-mode=false` to disable authentication, as authentication will be done either in the proxy or something on top of it like BungeeCord.
-
-Then you can run the server with `java -jar [server jar name].jar --nogui` or run it as a normal application.
+- `server-port=25400` This can be changed to whatever you set for a server address in the generated `config.ron`.
+- `online-mode=false` to disable authentication, as authentication will be done in a proxy on top of the server like BungeeCord.
+ 
+Then you can run the server with `java -jar [server jar name].jar --nogui` or run it as a normal application given you have Java installed.
 
 ### Joining the proxy
 
