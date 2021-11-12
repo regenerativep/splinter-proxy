@@ -1,26 +1,15 @@
 use std::{
-    fs::{
-        self,
-        File,
-    },
+    fs::{self, File},
     io::Write,
     path::Path,
 };
 
 use ron::ser::PrettyConfig;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     protocol::current::{
-        status::{
-            StatusPlayerSampleSpec,
-            StatusPlayersSpec,
-            StatusSpec,
-            StatusVersionSpec,
-        },
+        status::{StatusPlayerSampleSpec, StatusPlayersSpec, StatusSpec, StatusVersionSpec},
         types::Chat,
     },
     proxy::SplinterProxy,
@@ -87,9 +76,9 @@ impl SplinterConfig {
                 online: total_players as i32,
                 sample: players
                     .iter()
-                    .map(|(name, client)| StatusPlayerSampleSpec {
-                        name: name.clone(),
-                        id: client.uuid,
+                    .map(|(uuid, client)| StatusPlayerSampleSpec {
+                        name: client.name.clone(),
+                        id: *uuid,
                     })
                     .collect::<Vec<StatusPlayerSampleSpec>>(),
             },

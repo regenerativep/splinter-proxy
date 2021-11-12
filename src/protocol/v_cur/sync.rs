@@ -4,13 +4,16 @@ use std::{
 };
 
 use super::RelayPass;
-use crate::protocol::current::{
-    proto::{Packet756 as PacketLatest, Packet756Kind as PacketLatestKind},
-    types::Vec3,
+use crate::protocol::{
+    current::{
+        proto::{Packet756 as PacketLatest, Packet756Kind as PacketLatestKind},
+        types::Vec3,
+    },
+    PacketDestination,
 };
 
 inventory::submit! {
-    RelayPass(Box::new(|_proxy, _connection, client, _sender, lazy_packet, _destination| {
+    RelayPass(Box::new(|_proxy, _connection, client, _sender, lazy_packet, destination| {
         if matches!(lazy_packet.kind(),
             PacketLatestKind::PlayServerHeldItemChange
             | PacketLatestKind::PlayClientHeldItemChange
@@ -38,6 +41,7 @@ inventory::submit! {
                             },
                             _ => {},
                         }
+                        *destination = PacketDestination::None;
                     }
                 },
                 Ok(_) => unreachable!(),

@@ -1,25 +1,14 @@
-use super::{
-    PacketDestination,
-    RelayPass,
-};
+use super::{PacketDestination, RelayPass};
 use crate::{
     protocol::current::{
-        proto::{
-            EntityMetadataFieldData,
-            SculkDestinationIdentifier,
-        },
+        proto::{EntityMetadataFieldData, SculkDestinationIdentifier},
         protocol::PacketDirection,
         types::VarInt,
-        PacketLatest,
-        PacketLatestKind,
+        PacketLatest, PacketLatestKind,
     },
     proxy::{
         client::SplinterClient,
-        mapping::{
-            EntityData,
-            SplinterMapping,
-            SplinterMappingResult,
-        },
+        mapping::{EntityData, SplinterMapping, SplinterMappingResult},
         server::SplinterServer,
     },
 };
@@ -229,11 +218,26 @@ pub fn map_eid(
                     (vec![], vec![])
                 }
                 PacketLatest::PlaySpawnPlayer(body) => {
+                    if server.id
+                        != smol::block_on(async {
+                            client
+                                .proxy
+                                .players
+                                .read()
+                                .await
+                                .get(&body.uuid)
+                                .map(|cl| cl.server_id())
+                                .unwrap_or(server.id)
+                            // TODO: uh, what actually should happen if no UUID match?
+                        })
+                    {
+                        return SplinterMappingResult::None;
+                    }
                     entity_data = Some(EntityData {
                         id: *body.entity_id,
                         entity_type: 111,
                     });
-                    let new_eid = if let Some(mapped_id) =
+                    /*let new_eid = if let Some(mapped_id) =
                         map.eids.get_by_right(&(server.id, *body.entity_id))
                     {
                         *mapped_id
@@ -241,7 +245,8 @@ pub fn map_eid(
                         map.register_eid_mapping(server.id, *body.entity_id)
                         // for whatever reason, server has two eids per player or something. im
                         // not sure. this fixes it though
-                    };
+                    };*/
+                    let new_eid = map.register_eid_mapping(server.id, *body.entity_id);
                     smol::block_on(client.known_eids.lock()).insert(new_eid);
                     body.entity_id = new_eid.into();
                     (vec![], vec![])

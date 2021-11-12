@@ -5,10 +5,7 @@ use anyhow::Context;
 use crate::{
     protocol::v_cur::send_position_set,
     proxy::SplinterProxy,
-    systems::commands::{
-        CommandSender,
-        SplinterCommand,
-    },
+    systems::commands::{CommandSender, SplinterCommand},
 };
 
 inventory::submit! {
@@ -19,8 +16,11 @@ inventory::submit! {
                 bail!("Invalid number of arguments");
             }
             let target_id = args[1].parse::<u64>().with_context(|| "Invalid target server id")?;
-            let player_map = smol::block_on(proxy.players.read());
-            let client = player_map.get(args[2]).ok_or_else(|| anyhow!("Failed to find player"))?;
+            let client = if let Some(cl) = smol::block_on(proxy.find_client_by_name(args[2])) {
+                cl
+            } else {
+                bail!("Failed to find player");
+            };
             match args[0] {
                 "switch" => {
                     smol::block_on(client.swap_dummy(target_id))?;
@@ -46,8 +46,11 @@ inventory::submit! {
     SplinterCommand {
         name: "send",
         action: Box::new(|proxy: &Arc<SplinterProxy>, _cmd: &str, args: &[&str], _sender: &CommandSender| {
-            let player_map = smol::block_on(proxy.players.read());
-            let client = player_map.get(args[0]).ok_or_else(|| anyhow!("Failed to find player"))?;
+            let client = if let Some(cl) = smol::block_on(proxy.find_client_by_name(args[0])) {
+                cl
+            } else {
+                bail!("Failed to find player");
+            };
             //let target_id = args[1].parse::<u64>().with_context(|| "Invalid target server id")?;
             let active_server = client.active_server.load();
             smol::block_on(async {

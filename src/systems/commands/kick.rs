@@ -1,14 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    proxy::{
-        ClientKickReason,
-        SplinterProxy,
-    },
-    systems::commands::{
-        CommandSender,
-        SplinterCommand,
-    },
+    proxy::{ClientKickReason, SplinterProxy},
+    systems::commands::{CommandSender, SplinterCommand},
 };
 inventory::submit! {
     SplinterCommand {
@@ -27,7 +21,12 @@ inventory::submit! {
             } else {
                 None
             };
-            smol::block_on(proxy.kick_client(name, ClientKickReason::Kicked(sender.name(), message)))?;
+            if let Some(cl) = smol::block_on(proxy.find_client_by_name(name)) {
+                smol::block_on(proxy.kick_client(cl.uuid, ClientKickReason::Kicked(sender.name(), message)))?;
+            }
+            else {
+                bail!("Failed to find client by the name \"{}\"", name);
+            }
             Ok(())
         }),
     }

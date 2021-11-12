@@ -1,55 +1,27 @@
-use std::{
-    collections::HashSet,
-    str,
-    sync::Arc,
-};
+use std::{collections::HashSet, str, sync::Arc};
 
 use anyhow::Context;
-use craftio_rs::{
-    CraftAsyncReader,
-    CraftAsyncWriter,
-    CraftIo,
-};
+use craftio_rs::{CraftAsyncReader, CraftAsyncWriter, CraftIo};
 
 use crate::{
     protocol::{
         current::{
             proto::{
-                ClientChatMode,
-                ClientDisplayedSkinParts,
-                ClientMainHand,
-                ClientStatusAction,
-                HandshakeNextState,
-                HandshakeSpec,
-                LoginSetCompressionSpec,
-                LoginStartSpec,
-                LoginSuccessSpec,
-                PlayClientHeldItemChangeSpec,
-                PlayClientPluginMessageSpec,
-                PlayClientSettingsSpec,
-                PlayClientStatusSpec,
-                PlayServerPluginMessageSpec,
-                PlayTagsSpec,
-                PlayTeleportConfirmSpec,
+                ClientChatMode, ClientDisplayedSkinParts, ClientMainHand, ClientStatusAction,
+                HandshakeNextState, HandshakeSpec, LoginSetCompressionSpec, LoginStartSpec,
+                LoginSuccessSpec, PlayClientHeldItemChangeSpec, PlayClientPluginMessageSpec,
+                PlayClientSettingsSpec, PlayClientStatusSpec, PlayDestroyEntitySpec,
+                PlayServerPluginMessageSpec, PlayTagsSpec, PlayTeleportConfirmSpec,
             },
             protocol::PacketDirection,
-            types::VarInt,
+            types::{CountedArray, VarInt},
             uuid::UUID4,
-            PacketLatest,
-            RawPacketLatest,
+            PacketLatest, RawPacketLatest,
         },
-        plugin,
-        AsyncCraftWriter,
-        ClientBuilder,
-        Tags,
+        plugin, AsyncCraftWriter, ClientBuilder, Tags,
     },
     proxy::{
-        client::{
-            ChatMode,
-            ClientSettings,
-            MainHand,
-            SkinPart,
-        },
+        client::{ChatMode, ClientSettings, MainHand, SkinPart},
         server::SplinterServerConnection,
         SplinterProxy,
     },
@@ -156,7 +128,9 @@ pub async fn handle_client_login_packet(
                 builder.play_client_settings(body.clone().into()).await?;
                 *next_sender = PacketDirection::ClientBound;
             }
-            packet @ (PacketLatest::PlayServerDifficulty(_)
+            packet
+            @
+            (PacketLatest::PlayServerDifficulty(_)
             | PacketLatest::PlayServerPlayerAbilities(_)
             | PacketLatest::PlayDeclareRecipes(_)
             | PacketLatest::PlayServerHeldItemChange(_)) => {
@@ -314,9 +288,7 @@ pub async fn send_held_item_change(
         .writer
         .get_mut()
         .write_packet_async(PacketLatest::PlayClientHeldItemChange(
-            PlayClientHeldItemChangeSpec {
-                slot: slot as i16,
-            },
+            PlayClientHeldItemChangeSpec { slot: slot as i16 },
         ))
         .await
         .map_err(|e| e.into())
@@ -335,6 +307,18 @@ pub async fn send_position_set(
                 data: plugin::position_set(x, y, z).into(),
             },
         ))
+        .await
+        .map_err(|e| anyhow!(e))
+}
+
+pub async fn send_destroy_entities(
+    writer: &mut AsyncCraftWriter,
+    entities: CountedArray<VarInt, VarInt>,
+) -> anyhow::Result<()> {
+    writer
+        .write_packet_async(PacketLatest::PlayDestroyEntities(PlayDestroyEntitySpec {
+            entity_ids: entities,
+        }))
         .await
         .map_err(|e| anyhow!(e))
 }

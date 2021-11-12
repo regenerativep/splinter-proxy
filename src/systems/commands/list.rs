@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     proxy::SplinterProxy,
-    systems::commands::{
-        CommandSender,
-        SplinterCommand,
-    },
+    systems::commands::{CommandSender, SplinterCommand},
 };
 inventory::submit! {
     SplinterCommand {
@@ -21,7 +18,7 @@ inventory::submit! {
                 },
                 players
                     .iter()
-                    .map(|(name, _)| name.to_owned())
+                    .map(|(_, cl)| cl.name.to_owned())
                     .reduce(|a, b| format!("{}, {}", a, b))
                     .unwrap_or_else(String::new),
             );

@@ -26,11 +26,12 @@ use crate::{
                 PlayClientPluginMessageSpec,
             },
             protocol::{PacketDirection, State},
-            types::Vec3,
+            types::{VarInt, Vec3},
             uuid::UUID4,
             PacketLatest, RawPacketLatest,
         },
-        v_cur, AsyncCraftWriter,
+        v_cur::{self, send_destroy_entities},
+        AsyncCraftWriter,
     },
     proxy::{mapping, server::SplinterServerConnection, SplinterProxy},
     systems::keepalive::{self, watch_dummy},
@@ -97,9 +98,34 @@ impl SplinterClient {
             .position(|v| v.0 == target_id)
             .ok_or_else(|| anyhow!("No dummy with specified target id"))?;
         let mut new_dummy_servers = dummy_servers.clone();
-        let (_dummy_id, dummy) = new_dummy_servers.remove(ind);
+        let (dummy_server_id, dummy) = new_dummy_servers.remove(ind);
         self.dummy_servers.store(Arc::new(new_dummy_servers));
         dummy.alive.store(false, Ordering::Relaxed);
+        let eids = &mut *self.known_eids.lock().await;
+        let mut eids_to_unload = vec![];
+        let map = &mut *self.proxy.mapping.lock().await;
+        eids.iter()
+            .filter(|eid| {
+                if let Some((other_server_id, _)) = map.eids.get_by_left(eid) {
+                    *other_server_id == dummy_server_id
+                } else {
+                    false
+                }
+            })
+            .for_each(|eid| eids_to_unload.push(*eid));
+        for eid in eids_to_unload.iter() {
+            debug!("unloading {} for {}-{}", eid, &self.name, dummy_server_id);
+            eids.remove(eid);
+        }
+        send_destroy_entities(
+            &mut *self.writer.lock().await,
+            eids_to_unload
+                .into_iter()
+                .map(|eid| eid.into())
+                .collect::<Vec<VarInt>>()
+                .into(),
+        )
+        .await?;
         Ok(())
     }
     /// takes a dummy away from the client's dummy servers and returns it

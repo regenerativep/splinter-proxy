@@ -27,7 +27,7 @@ use mapping::SplinterMapping;
 use server::SplinterServer;
 
 use crate::{
-    protocol::Tags,
+    protocol::{current::uuid::UUID4, Tags},
     systems::{
         playersave::{
             load_player_data, save_player_data, PlInfo, PlInfoPlayer, PLAYER_DATA_FILENAME,
@@ -39,7 +39,7 @@ use crate::{
 pub struct SplinterProxy {
     pub alive: AtomicBool,
     pub config: SplinterConfig,
-    pub players: RwLock<HashMap<String, Arc<SplinterClient>>>,
+    pub players: RwLock<HashMap<UUID4, Arc<SplinterClient>>>,
     pub servers: RwLock<HashMap<u64, Arc<SplinterServer>>>,
     pub mapping: Mutex<SplinterMapping>,
     pub tags: Mutex<Option<Tags>>,
@@ -102,15 +102,14 @@ impl SplinterProxy {
     }
     pub async fn kick_client(
         &self,
-        client_name: impl AsRef<str>,
+        client_uuid: UUID4,
         reason: ClientKickReason,
     ) -> anyhow::Result<()> {
-        let name_string = client_name.as_ref().to_owned();
-        let cl_opt = self.players.read().await.get(&name_string).map(Arc::clone);
+        let cl_opt = self.players.read().await.get(&client_uuid).map(Arc::clone);
         if let Some(client) = cl_opt {
             client.send_kick(reason).await?;
             client.set_alive(false).await;
-            self.players.write().await.remove(&name_string);
+            self.players.write().await.remove(&client_uuid);
             let pos = &**client.position.load();
             self.player_data.lock().await.players.insert(
                 client.uuid,
@@ -122,23 +121,23 @@ impl SplinterProxy {
                 },
             );
         } else {
-            bail!("Failed to find client by the name \"{}\"", name_string);
+            bail!("Failed to find client by UUID \"{}\"", client_uuid);
         }
         Ok(())
     }
     pub async fn shutdown(&self) {
-        let names = self
+        let uuids = self
             .players
             .read()
             .await
             .iter()
-            .map(|(name, _)| name.to_owned())
-            .collect::<Vec<String>>();
-        if !names.is_empty() {
+            .map(|(uuid, _)| *uuid)
+            .collect::<Vec<UUID4>>();
+        if !uuids.is_empty() {
             info!("Disconnecting clients");
-            for name in names {
-                if let Err(e) = self.kick_client(&name, ClientKickReason::Shutdown).await {
-                    error!("Error kicking player \"{}\": {}", &name, e);
+            for uuid in uuids {
+                if let Err(e) = self.kick_client(uuid, ClientKickReason::Shutdown).await {
+                    error!("Error kicking player \"{}\": {}", uuid, e);
                 }
             }
         }
@@ -148,6 +147,16 @@ impl SplinterProxy {
         }
         info!("Shutting down");
         self.alive.store(false, Ordering::Relaxed);
+    }
+    pub async fn find_client_by_name(&self, name: impl AsRef<str>) -> Option<Arc<SplinterClient>> {
+        let name = name.as_ref();
+        return self
+            .players
+            .read()
+            .await
+            .iter()
+            .find(|(_uuid, cl)| cl.name == name)
+            .map(|(_uuid, cl)| Arc::clone(cl));
     }
 }
 

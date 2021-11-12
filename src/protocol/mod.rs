@@ -171,7 +171,7 @@ impl SplinterClient {
                 }
             }
         }
-        proxy.players.write().await.remove(&self.name);
+        proxy.players.write().await.remove(&self.uuid);
         self.alive.store(false, Ordering::Relaxed);
         let pos = &**self.position.load();
         self.proxy.player_data.lock().await.players.insert(

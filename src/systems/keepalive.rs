@@ -51,7 +51,7 @@ async fn keep_alive_loop(proxy: Arc<SplinterProxy>) -> anyhow::Result<()> {
                 if keep_alive_millis - *client.last_keep_alive.lock().await > 30 * 1000 {
                     // client connection time out
                     if let Err(e) = proxy
-                        .kick_client(&client.name, ClientKickReason::TimedOut)
+                        .kick_client(client.uuid, ClientKickReason::TimedOut)
                         .await
                     {
                         error!(
@@ -212,6 +212,9 @@ pub async fn watch_dummy(client: Arc<SplinterClient>, dummy_conn: Arc<SplinterSe
                     let map = &mut *client.proxy.mapping.lock().await;
                     pass_through = pass_through || SplinterMappingResult::Client == map_eid(&*client, map, packet, &PacketDirection::ClientBound, &dummy_conn.server);
                 }
+            }
+            if lazy_packet.kind() == PacketLatestKind::PlayPlayerInfo {
+                pass_through = true;
             }
             if pass_through {
                 if let Err(e) = send_packet(&client, &PacketDestination::Client, lazy_packet)

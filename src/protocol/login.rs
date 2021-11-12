@@ -284,7 +284,7 @@ pub async fn handle_client_login(
         .players
         .write()
         .await
-        .insert(client_arc.name.clone(), Arc::clone(&client_arc));
+        .insert(client_arc.uuid, Arc::clone(&client_arc));
 
     // move on to relay loop
     let (res_a, res_b) = future::zip(
