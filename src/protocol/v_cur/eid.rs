@@ -21,11 +21,11 @@ inventory::submit! {
                 match map_eid(&*client, map, packet, sender, &connection.server) {
                     SplinterMappingResult::Server(server_id) => {
                         *destination = PacketDestination::Server(server_id);
-                        //debug!("mapping packet {:?} to server {}", lazy_packet.kind(), server_id);
+                        debug!("mapping packet {:?} to server {}", lazy_packet.kind(), server_id);
                     }
                     SplinterMappingResult::None => {
                         *destination = PacketDestination::None;
-                        //debug!("refusing to send packet of kind {:?} (no eid mapping)", packet);
+                        debug!("refusing to send packet of kind {:?} (no eid mapping)", packet);
                     }
                     _ => {}
                 }
@@ -349,15 +349,20 @@ pub fn map_eid(
                     (vec![], vec![])
                 }
                 PacketLatest::PlayDestroyEntities(ref mut body) => {
-                    for eid in body.entity_ids.iter_mut() {
-                        // since we're removing the id from the mapping table here, we have to map them here as well
-                        *eid = if let Some(mapped_id) = map.eids.get_by_right(&(server.id, **eid)) {
-                            smol::block_on(client.known_eids.lock()).remove(mapped_id);
-                            (*mapped_id).into()
-                        } else {
-                            return SplinterMappingResult::None;
-                        };
-                    }
+                    let player_known_eids = &mut *smol::block_on(client.known_eids.lock());
+                    body.entity_ids = body
+                        .entity_ids
+                        .iter_mut()
+                        .filter_map(|eid| {
+                            if let Some(mapped_id) = map.eids.get_by_right(&(server.id, **eid)) {
+                                player_known_eids.remove(mapped_id);
+                                Some((*mapped_id).into())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<VarInt>>()
+                        .into();
                     (vec![], vec![])
                 }
                 _ => unreachable!(),

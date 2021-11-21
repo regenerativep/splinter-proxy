@@ -128,6 +128,7 @@ impl SplinterClient {
         .await?;
         Ok(())
     }
+    // TODO: can return an option
     /// takes a dummy away from the client's dummy servers and returns it
     pub fn grab_dummy(&self, target_id: u64) -> anyhow::Result<Arc<SplinterServerConnection>> {
         let mut res = Err(anyhow!("somehow rcu didnt run??")); // we know the following function will run once. this error should never happen, but im not sure how to do this without setting res to an initial value
